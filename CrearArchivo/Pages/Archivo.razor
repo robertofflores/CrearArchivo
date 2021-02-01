@@ -1,0 +1,165 @@
+﻿@page "/archivo"
+@using BlazorFileUpload.Service
+@using CrearArchivo.Services
+@using CrearArchivo.Data
+@using System.Collections.Generic
+@using System.IO
+@using CsvHelper
+@inject IJSRuntime JS
+@using BlazorInputFile
+@inject IFileUpload fileUpload
+@using System.Threading.Tasks
+
+
+
+<h3>Archivo</h3>
+
+
+<InputFile class="btn btn-success" multiple OnChange="HandleFileSelected"></InputFile>
+
+@if (liquidaciones != null)
+{
+    <button class="btn btn-primary" @onclick="ExportarCSV">Exportar CSV</button>
+}
+<br>
+<br>
+@if (errorCarga != null)
+{
+    <div class="alert alert-danger" role="alert">
+        @errorCarga
+    </div>
+}
+@if (msgCarga != null)
+{
+    <div class="alert alert-success" role="alert">
+        @msgCarga
+    </div>
+}
+
+@if (liquidaciones != null)
+@*{
+        <p><em>Loading...</em></p>
+    }
+    else*@
+{
+
+
+
+
+    <table class="table">
+        <tbody>
+            @foreach (var liqui in g_liquidacion)
+            {
+                <tr>
+                    <td>@liqui.Codigo</td>
+                    <td>@liqui.Moneda</td>
+                    <td>@liqui.Recap</td>
+                    <td>@liqui.Voucher</td>
+                    <td>@liqui.RecapCorregido</td>
+                    <td>@liqui.VoucherCorregido</td>
+                    <td>@liqui.Liquidado</td>
+                    <td>@liqui.FormaPago</td>
+                    <td>@liqui.Pago</td>
+                    <td>@liqui.Documento</td>
+                    <td>@liqui.Local</td>
+                    <td>@liqui.Numero</td>
+                    <td>@liqui.Sigla</td>
+                    <td>@liqui.Tarjeta</td>
+                    <td>@liqui.Consumo</td>
+                    <td>@liqui.Comision</td>
+                    <td>@liqui.Retencion</td>
+                    <td>@liqui.Iva</td>
+                    <td>@liqui.RetencionIva</td>
+                    <td>@liqui.Credito</td>
+                    <td>@liqui.Cuotas</td>
+                    <td>@liqui.ComisionIva</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+
+@code {
+
+    string path = null;
+    string errorCarga = null;
+    string msgCarga = null;
+
+
+
+    protected override void OnInitialized()
+    {
+        liquidaciones = null;
+        g_liquidacion.Clear();
+    }
+
+    //  IFileListEntry file;
+    async Task HandleFileSelected(IFileListEntry[] files)
+    {
+
+        errorCarga = null;
+        msgCarga = null;
+        liquidaciones = null;
+        g_liquidacion.Clear();
+        //file = files.FirstOrDefault();
+        foreach (IFileListEntry file in files)
+        {
+            // file = files[i];
+            if (file != null)
+            {
+                await fileUpload.UploadAsync(file);
+                path = file.Name;
+                if (path != null)
+                {
+                    errorCarga = null;
+                    if (path.Substring(path.Length - 4, 4) == ".txt")
+                    {
+                        errorCarga = null;
+                        msgCarga = null;
+                        path = "\\\\192.168.2.123\\compartir\\" + path;
+                        Transformar transformar = new Transformar();
+                        liquidaciones = transformar.LeerArchivo(path);
+                        foreach (Liquidacion2 item in liquidaciones)
+                        {
+
+                            g_liquidacion.Add(item);
+                        }
+
+                    }
+                    else
+                    {
+                        msgCarga = null;
+                        errorCarga = "Sólo puede cargar archivos de Texto!";
+
+                    }
+                }
+
+            }
+        }
+
+    }
+
+
+    List<Liquidacion2> liquidaciones = new List<Liquidacion2>();
+    List<Liquidacion2> g_liquidacion = new List<Liquidacion2>();
+
+
+    private void ExportarCSV()
+    {
+        using (var memoryStream = new MemoryStream())
+        {
+            using (var writer = new StreamWriter(memoryStream))
+            {
+                using (var csv = new CsvWriter(writer))
+                {
+                    csv.WriteRecords(g_liquidacion);
+                }
+                var arr = memoryStream.ToArray();
+                JS.GuardarComo("liquidaciones.csv", arr);
+            }
+        }
+
+
+    }
+}
